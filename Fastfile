@@ -75,6 +75,31 @@ def doDistributeFabric(scheme, configuration,bundleID,provisioningProfile,change
 
 end
 
+def doDistributeAppleStore()
+	scheme, configuration, bundleIDs, provisioningProfiles = $DISTRIBUTE_INFO
+    	profiles = {}
+	bundleIDs.each_with_index { |bundleID, index| 
+
+		profiles[bundleID] = provisioningProfiles[index]
+    	}
+
+    	gym(scheme: scheme, 
+		skip_profile_detection:true,
+		configuration: configuration,
+		include_bitcode:true,
+		include_symbols:true,
+		export_method: "app-store",
+		export_options: {
+    			provisioningProfiles: profiles
+		}
+	) # Build your app - more options available
+	deliver(skip_screenshots: true,
+                skip_metadata: true,
+                submit_for_review: false,
+		skip_binary_upload: false)
+	
+end 
+
 platform :ios do
   
   desc "Upload ScreenShots to AppStore"
@@ -90,32 +115,27 @@ platform :ios do
   lane :Distribute do
     # match(type: "appstore")
     # snapshot
-    scheme, configuration, bundleIDs, provisioningProfiles = $DISTRIBUTE_INFO
-    profiles = {}
-    bundleIDs.each_with_index { |bundleID, index| 
-
-	profiles[bundleID] = provisioningProfiles[index]
-    }
-
-    gym(scheme: scheme, 
-	skip_profile_detection:true,
-	configuration: configuration,
-	include_bitcode:true,
-	include_symbols:true,
-	export_method: "app-store",
-	export_options: {
-    		provisioningProfiles: profiles
-	}
-    ) # Build your app - more options available
-    deliver(skip_screenshots: true,
-                skip_metadata: true,
-                submit_for_review: false,
-		skip_binary_upload: false)
+    doDistributeAppleStore()
     # frameit 
     add_git_tag(
             tag:"distribute/v" + get_version_number() + "_" + get_build_number()
             )
   end
+
+	
+  desc "Deploy a new version to the App Store with version bump"
+  lane :BumpDistribute do
+    # match(type: "appstore")
+    # snapshot
+    increment_build_number   
+    doDistributeAppleStore()
+    # frameit 
+    add_git_tag(
+            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
+            )
+  end
+
+
 
   desc "Deploy a new version to Fabric"
   lane :Fabric do
