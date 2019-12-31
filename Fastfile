@@ -19,7 +19,7 @@
 
 
 default_platform :ios
-$DISTRIBUTE_INFO = []
+$DISTRIBUTE_INFOS = []
 $FABRIC_SCHEMES = []
 $FABRIC_DEV_SCHEMES = []
 $FABRIC_GROUPS = ""
@@ -76,28 +76,29 @@ def doDistributeFabric(scheme, configuration,bundleID,provisioningProfile,change
 end
 
 def doDistributeAppleStore()
-	scheme, configuration, bundleIDs, provisioningProfiles = $DISTRIBUTE_INFO
-    	profiles = {}
-	bundleIDs.each_with_index { |bundleID, index| 
+	$DISTRIBUTE_INFOS.any? {
+    	$DISTRIBUTE_INFOS.each { |scheme, configuration, bundleIDs, provisioningProfiles| 
+	        profiles = {}
+            bundleIDs.each_with_index { |bundleID, index|
+                profiles[bundleID] = provisioningProfiles[index]
+	    	}
 
-		profiles[bundleID] = provisioningProfiles[index]
-    	}
+    		gym(scheme: scheme, 
+                skip_profile_detection:true,
+                configuration: configuration,
+                include_bitcode:true,
+                include_symbols:true,
+                export_method: "app-store",
+			export_options: {
+    				provisioningProfiles: profiles
+			}) # Build your app - more options available
+            deliver(skip_screenshots: true,
+        	        skip_metadata: true,
+                	submit_for_review: false,
+                    skip_binary_upload: false)
+        }
+	}
 
-    	gym(scheme: scheme, 
-		skip_profile_detection:true,
-		configuration: configuration,
-		include_bitcode:true,
-		include_symbols:true,
-		export_method: "app-store",
-		export_options: {
-    			provisioningProfiles: profiles
-		}
-	) # Build your app - more options available
-	deliver(skip_screenshots: true,
-                skip_metadata: true,
-                submit_for_review: false,
-		skip_binary_upload: false)
-	
 end 
 
 platform :ios do
