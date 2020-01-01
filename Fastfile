@@ -92,7 +92,8 @@ def doDistributeAppleStore()
 			export_options: {
     				provisioningProfiles: profiles
 			}) # Build your app - more options available
-            deliver(skip_screenshots: true,
+            deliver(app_identifier:bundleIDs[0],
+			skip_screenshots: true,
         	        skip_metadata: true,
                 	submit_for_review: false,
                     skip_binary_upload: false)
