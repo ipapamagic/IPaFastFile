@@ -19,61 +19,55 @@
 
 
 default_platform :ios
-$DISTRIBUTE_INFOS = []
-$FABRIC_SCHEMES = []
-$FABRIC_DEV_SCHEMES = []
-$FABRIC_GROUPS = ""
+
+$SCHEMES = []
 $tagPrefix = ""
 MAIN_PROJECT = nil
 def generateReleaseNote
-    count = sh("git describe --match \"build/v*\" | wc -l")
+    count = sh("git describe --match \"distribute/v*\" | wc -l")
     changelog = "no log...."
     if count > 0.to_s
         #changelog = sh("git log --reverse --format=\"%b %s\"")
         changelog = changelog_from_git_commits(between:['HEAD^^','HEAD'])
     else
         changelog = changelog_from_git_commits(
-           tag_match_pattern: "build/" + $tagPrefix + "v*",
+           tag_match_pattern: "distribute/" + $tagPrefix + "v*",
            match_lightweight_tag: false,
            include_merges: false)
     end
     return changelog
 end
-def distributeFabric(changelog)
-    $FABRIC_SCHEMES.any? {
-    	$FABRIC_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile| 
-           doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'ad-hoc')
-	}
-    }
-    $FABRIC_DEV_SCHEMES.any? {
-        $FABRIC_DEV_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile| 
-	   doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'development')
-        }
-    }
+#def distributeFabric(changelog)
+#    $FABRIC_SCHEMES.any? {
+#    	$FABRIC_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile|
+#           doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'ad-hoc')
+#	}
+#    }
+#    $FABRIC_DEV_SCHEMES.any? {
+#        $FABRIC_DEV_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile|
+#	   doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'development')
+#        }
+#    }
     
-end
-def doDistributeFabric(scheme, configuration,bundleID,provisioningProfile,changelog,export_method) 
-	gym(scheme: scheme, 
-            skip_profile_detection:true,
-	    configuration:configuration,
-	    export_method:export_method,
-	    export_options:{
-     		  provisioningProfiles: {
-		        bundleID => provisioningProfile,
-		      }
-	    }
-	) # Build your app - more options available
-	puts $FABRIC_GROUPS 
-	puts ENV["CRASHLYTICS_API_TOKEN"]
-	puts ENV["CRASHLYTICS_BUILD_SECRET"]
-        crashlytics(
+#end
+#def doDistributeFabric(scheme, configuration,bundleID,provisioningProfile,changelog,export_method)
+#	gym(scheme: scheme,skip_profile_detection:true,configuration:configuration,export_method:export_method,export_options:{
+#     		  provisioningProfiles: {
+#		        bundleID => provisioningProfile,
+#		      }
+#	    }
+#	) # Build your app - more options available
+#	puts $FABRIC_GROUPS
+#	puts ENV["CRASHLYTICS_API_TOKEN"]
+#	puts ENV["CRASHLYTICS_BUILD_SECRET"]
+#        crashlytics(
 #	    crashlytics_path: './Pods/Crashlytics/Crashlytics.framework',
-            api_token: ENV["CRASHLYTICS_API_TOKEN"],
-            build_secret: ENV["CRASHLYTICS_BUILD_SECRET"],
-            groups:$FABRIC_GROUPS,
-            notes: changelog)
+#            api_token: ENV["CRASHLYTICS_API_TOKEN"],
+#            build_secret: ENV["CRASHLYTICS_BUILD_SECRET"],
+#            groups:$FABRIC_GROUPS,
+#            notes: changelog)
 
-end
+#end
 
 def doDistributeAppleStore()
 	$DISTRIBUTE_INFOS.any? {
@@ -130,7 +124,14 @@ platform :ios do
     # match(type: "appstore")
     # snapshot
     increment_build_number   
-    doDistributeAppleStore()
+    changelog = generateReleaseNote()
+    $SCHEMES.any? {
+        $SCHEMES.each { |scheme|
+            build_app(scheme:scheme)
+            upload_to_testflight(changelog: changelog)
+        }
+    }
+   
     # frameit
     unless MAIN_PROJECT.nil?
 	commit_version_bump(
