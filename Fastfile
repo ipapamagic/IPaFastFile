@@ -120,7 +120,7 @@ platform :ios do
 
 	
   desc "Deploy a new version to the App Store with version bump"
-  lane :BumpDistribute do
+  lane :TestFlight do
     # match(type: "appstore")
     # snapshot
     increment_build_number   
@@ -128,7 +128,8 @@ platform :ios do
     $SCHEMES.any? {
         $SCHEMES.each { |scheme|
             build_app(scheme:scheme)
-            upload_to_testflight(changelog: changelog)
+            upload_to_testflight(changelog: changelog,
+				ipa:scheme + ".ipa")
         }
     }
    
