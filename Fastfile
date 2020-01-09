@@ -131,24 +131,7 @@ platform :ios do
     # snapshot
     increment_build_number   
     doDistributeAppleStore()
-    # frameit 
-    add_git_tag(
-            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
-            )
-  end
-
-
-
-  desc "Deploy a new version to Fabric"
-  lane :Fabric do
-#    get_certificates
-#    get_provisioning_profile
-    increment_build_number   
-    changelog = generateReleaseNote()
-    unless changelog.nil?
-	puts changelog
-    end
-    distributeFabric(changelog)
+    # frameit
     unless MAIN_PROJECT.nil?
 	commit_version_bump(
 		force:true,
@@ -158,12 +141,38 @@ platform :ios do
 	commit_version_bump(
 		force:true,
 		)
-    end
-
+    end 
     add_git_tag(
-            tag:"build/" + $tagPrefix + "v" + get_build_number()
+            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
             )
   end
+
+
+
+#  desc "Deploy a new version to Fabric"
+#  lane :Fabric do
+
+#    increment_build_number   
+#    changelog = generateReleaseNote()
+#    unless changelog.nil?
+#	puts changelog
+#    end
+#    distributeFabric(changelog)
+#    unless MAIN_PROJECT.nil?
+#	commit_version_bump(
+#		force:true,
+#		xcodeproj: MAIN_PROJECT
+#		)
+#    else
+#	commit_version_bump(
+#		force:true,
+#		)
+#    end
+
+#    add_git_tag(
+#            tag:"build/" + $tagPrefix + "v" + get_build_number()
+#            )
+#  end
 
 end
 
