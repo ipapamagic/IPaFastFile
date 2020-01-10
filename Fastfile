@@ -120,7 +120,7 @@ platform :ios do
 
 	
   desc "Deploy a new version to the App Store with version bump"
-  lane :TestFlight do
+  lane :UploadTestFlight do
     # match(type: "appstore")
     # snapshot
     increment_build_number   
