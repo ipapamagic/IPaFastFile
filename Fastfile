@@ -20,7 +20,7 @@
 
 default_platform :ios
 
-$SCHEMES = []
+$SCHEME_INFOS = []
 $tagPrefix = ""
 MAIN_PROJECT = nil
 def generateReleaseNote
@@ -125,10 +125,12 @@ platform :ios do
     # snapshot
     increment_build_number   
     changelog = generateReleaseNote()
-    $SCHEMES.any? {
-        $SCHEMES.each { |scheme|
+    $SCHEME_INFOS.any? {
+        $SCHEME_INFOS.each { |scheme, bundleId |
             build_app(scheme:scheme)
-            upload_to_testflight(changelog: changelog,
+            upload_to_testflight(
+				app_identifier:bundleId
+				changelog: changelog,
 				ipa:scheme + ".ipa")
         }
     }
