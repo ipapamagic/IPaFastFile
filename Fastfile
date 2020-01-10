@@ -129,7 +129,7 @@ platform :ios do
         $SCHEME_INFOS.each { |scheme, bundleId |
             build_app(scheme:scheme)
             upload_to_testflight(
-				app_identifier:bundleId
+				app_identifier:bundleId,
 				changelog: changelog,
 				ipa:scheme + ".ipa")
         }
