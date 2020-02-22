@@ -143,7 +143,7 @@ platform :ios do
             tag:"distribute/v" + get_version_number() + "_" + get_build_number()
             )
 
-    End
+    end
     changelog = generateReleaseNote()
     $SCHEME_INFOS.any? {
         $SCHEME_INFOS.each { |scheme, bundleId |
