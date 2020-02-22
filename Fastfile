@@ -147,7 +147,7 @@ platform :ios do
     changelog = generateReleaseNote()
     $SCHEME_INFOS.any? {
         $SCHEME_INFOS.each { |scheme, bundleId |
-            build_app(workspace:$WORKSPACE,
+            build_app(workspace:$WORKSPACE + ".xcworkspace",
 		      scheme:scheme,
 		      output_name: scheme + ".ipa", )
             upload_to_testflight(
