@@ -125,6 +125,20 @@ platform :ios do
     # snapshot
     increment_build_number   
     changelog = generateReleaseNote()
+    
+
+    # frameit
+    unless MAIN_PROJECT.nil?
+	commit_version_bump(
+		force:true,
+		xcodeproj: MAIN_PROJECT
+		)
+    else
+	commit_version_bump(
+		force:true,
+		)
+    end 
+
     add_git_tag(
             tag:"distribute/v" + get_version_number() + "_" + get_build_number()
             )
@@ -139,19 +153,7 @@ platform :ios do
 				ipa:scheme + ".ipa")
         }
     }
-   
-    # frameit
-    unless MAIN_PROJECT.nil?
-	commit_version_bump(
-		force:true,
-		xcodeproj: MAIN_PROJECT
-		)
-    else
-	commit_version_bump(
-		force:true,
-		)
-    end 
-
+ 
   end
 
 
