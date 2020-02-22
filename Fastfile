@@ -120,28 +120,31 @@ platform :ios do
 
 	
   desc "Deploy a new version to the App Store with version bump"
-  lane :UploadTestFlight do
+  lane :UploadTestFlight do |options|
     # match(type: "appstore")
     # snapshot
-    increment_build_number   
-    changelog = generateReleaseNote()
-    
+    if !options[:nobump]
+	
+ 
+    	increment_build_number   
+	    # frameit
+	unless MAIN_PROJECT.nil?
+		commit_version_bump(
+			force:true,
+			xcodeproj: MAIN_PROJECT
+			)
+	else
+		commit_version_bump(
+			force:true,
+			)
+    	end 
 
-    # frameit
-    unless MAIN_PROJECT.nil?
-	commit_version_bump(
-		force:true,
-		xcodeproj: MAIN_PROJECT
-		)
-    else
-	commit_version_bump(
-		force:true,
-		)
-    end 
-
-    add_git_tag(
+	add_git_tag(
             tag:"distribute/v" + get_version_number() + "_" + get_build_number()
             )
+
+    End
+    changelog = generateReleaseNote()
     $SCHEME_INFOS.any? {
         $SCHEME_INFOS.each { |scheme, bundleId |
             build_app(workspace:$WORKSPACE,
