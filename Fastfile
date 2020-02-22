@@ -19,7 +19,7 @@
 
 
 default_platform :ios
-
+$WORKSPACE = ""
 $SCHEME_INFOS = []
 $tagPrefix = ""
 MAIN_PROJECT = nil
@@ -125,9 +125,14 @@ platform :ios do
     # snapshot
     increment_build_number   
     changelog = generateReleaseNote()
+    add_git_tag(
+            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
+            )
     $SCHEME_INFOS.any? {
         $SCHEME_INFOS.each { |scheme, bundleId |
-            build_app(scheme:scheme)
+            build_app(workspace:$WORKSPACE,
+		      scheme:scheme,
+		      output_name: scheme + ".ipa", )
             upload_to_testflight(
 				app_identifier:bundleId,
 				changelog: changelog,
@@ -146,9 +151,7 @@ platform :ios do
 		force:true,
 		)
     end 
-    add_git_tag(
-            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
-            )
+
   end
 
 
