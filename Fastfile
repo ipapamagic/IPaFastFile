@@ -70,30 +70,22 @@ end
 #end
 
 def doDistributeAppleStore()
-	$DISTRIBUTE_INFOS.any? {
-    	$DISTRIBUTE_INFOS.each { |scheme, configuration, bundleIDs, provisioningProfiles| 
-	        profiles = {}
-            bundleIDs.each_with_index { |bundleID, index|
-                profiles[bundleID] = provisioningProfiles[index]
-	    	}
-
-    		gym(scheme: scheme, 
+	$SCHEME_INFOS.each { |scheme, bundleId |
+		gym(scheme: scheme, 
                 skip_profile_detection:true,
-                configuration: configuration,
                 include_bitcode:true,
                 include_symbols:true,
                 export_method: "app-store",
 			export_options: {
     				provisioningProfiles: profiles
 			}) # Build your app - more options available
-            deliver(app_identifier:bundleIDs[0],
+            deliver(app_identifier: bundleId,
 			skip_screenshots: true,
         	        skip_metadata: true,
                 	submit_for_review: false,
                     skip_binary_upload: false)
-        }
 	}
-
+	
 end 
 
 platform :ios do
@@ -155,11 +147,18 @@ platform :ios do
 		}
 	end
 	$SCHEME_INFOS.each { |scheme, bundleId |
+		if options[:changelog]
+			upload_to_testflight(
+				app_identifier:bundleId,
+				changelog: changelog,
+				ipa:scheme + ".ipa")
+		else
+			upload_to_testflight(
+				app_identifier:bundleId,
+				skip_waiting_for_build_processing:true,
+				ipa:scheme + ".ipa")
 
-		upload_to_testflight(
-			app_identifier:bundleId,
-			changelog: changelog,
-			ipa:scheme + ".ipa")
+		end
         }
 
     }
