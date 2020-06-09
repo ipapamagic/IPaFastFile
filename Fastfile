@@ -147,17 +147,17 @@ platform :ios do
 		}
 	end
 	$SCHEME_INFOS.each { |scheme, bundleId |
-		if options[:changelog]
+		if !options[:changelog]
+			upload_to_testflight(
+				app_identifier:bundleId,
+				skip_waiting_for_build_processing:true,
+				ipa:scheme + ".ipa")			
+		else
+
 			upload_to_testflight(
 				app_identifier:bundleId,
 				changelog: changelog,
 				ipa:scheme + ".ipa")
-		else
-			upload_to_testflight(
-				app_identifier:bundleId,
-				skip_waiting_for_build_processing:true,
-				ipa:scheme + ".ipa")
-
 		end
         }
 
