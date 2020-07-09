@@ -150,6 +150,7 @@ platform :ios do
 		if !options[:changelog]
 			upload_to_testflight(
 				app_identifier:bundleId,
+				skip_submission:true,
 				skip_waiting_for_build_processing:true,
 				ipa:scheme + ".ipa")			
 		else
