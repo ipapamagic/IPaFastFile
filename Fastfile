@@ -106,7 +106,7 @@ platform :ios do
     doDistributeAppleStore()
     # frameit 
     add_git_tag(
-            tag:"distribute/v" + get_version_number() + "_" + get_build_number()
+            tag:"distribute/v" + get_version_number() + "/" + get_build_number()
             )
   end
 
@@ -133,7 +133,7 @@ platform :ios do
 
 	scheme = $SCHEME_INFOS.first.first
 	add_git_tag(
-            tag:"distribute/v" + get_version_number(target: scheme) + "_" + get_build_number()
+            tag:"distribute/v" + get_version_number(target: scheme) + "/" + get_build_number()
             )
 
     end
