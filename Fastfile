@@ -124,7 +124,7 @@ platform :ios do
 	unless $MAIN_PROJECT.nil?
 		commit_version_bump(
 			force:true,
-			xcodeproj: MAIN_PROJECT
+			xcodeproj: $MAIN_PROJECT
 			)
 	else
 		commit_version_bump(
