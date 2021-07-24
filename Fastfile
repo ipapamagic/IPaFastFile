@@ -22,7 +22,8 @@ default_platform :ios
 $WORKSPACE = ""
 $SCHEME_INFOS = []
 $tagPrefix = ""
-MAIN_PROJECT = nil
+$MAIN_PROJECT = nil
+$EXPORT_OPTIONS = {}
 def generateReleaseNote
     count = sh("git describe --match \"distribute/v*\" | wc -l")
     changelog = "no log...."
@@ -120,7 +121,7 @@ platform :ios do
  
     	increment_build_number   
 	    # frameit
-	unless MAIN_PROJECT.nil?
+	unless $MAIN_PROJECT.nil?
 		commit_version_bump(
 			force:true,
 			xcodeproj: MAIN_PROJECT
@@ -143,7 +144,8 @@ platform :ios do
         	$SCHEME_INFOS.each { |scheme, bundleId |
 			build_app(workspace:$WORKSPACE + ".xcworkspace",
 				scheme:scheme,
-				output_name: scheme + ".ipa", )
+				output_name: scheme + ".ipa",
+				export_options: $EXPORT_OPTIONS)
 		}
 	end
 	$SCHEME_INFOS.each { |scheme, bundleId |
