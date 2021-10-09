@@ -90,7 +90,13 @@ def doDistributeAppleStore()
 end 
 
 platform :ios do
-  
+  desc "Reload Cocoapods library"
+  lane :podReload do
+	sh("rm", "-rf", "${HOME}/Library/Caches/CocoaPods")
+	sh("rm","-rf","`pwd`/Pods/")
+	sh("pod","update")	  
+
+  end
   desc "Upload ScreenShots to AppStore"
   lane :UploadScreenshots do
         deliver(skip_screenshots: false,
