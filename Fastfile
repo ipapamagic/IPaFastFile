@@ -92,10 +92,9 @@ end
 platform :ios do
   desc "Reload Cocoapods library"
   lane :podReload do
-	sh("rm", "-rf", "${HOME}/Library/Caches/CocoaPods")
-	sh("rm","-rf","`pwd`/Pods/")
+	sh("rm", "-rf",Dir.home + "/Library/Caches/CocoaPods")
+	sh("rm","-rf","../Pods/")
 	sh("pod","update")	  
-
   end
   desc "Upload ScreenShots to AppStore"
   lane :UploadScreenshots do
