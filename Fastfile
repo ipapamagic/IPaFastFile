@@ -94,7 +94,7 @@ platform :ios do
   lane :podReload do
 	sh("rm", "-rf",Dir.home + "/Library/Caches/CocoaPods")
 	sh("rm","-rf","../Pods/")
-	sh("pod","update")	  
+	cocoapods(repo_update:true, try_repo_update_on_error:true, clean_install:true)  
   end
   desc "Upload ScreenShots to AppStore"
   lane :UploadScreenshots do
