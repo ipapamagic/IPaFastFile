@@ -90,6 +90,11 @@ def doDistributeAppleStore()
 end 
 
 platform :ios do
+  desc "Remove Swift Package Manager Cache"
+  lane :removeSPMcache do
+	sh("rm","-rf","~/Library/Caches/org.swift.swiftpm")
+        sh("rm","-rf","~/Library/org.swift.swiftpm")
+  end
   desc "Reload Cocoapods library"
   lane :podReload do
 	sh("rm", "-rf",Dir.home + "/Library/Caches/CocoaPods")
