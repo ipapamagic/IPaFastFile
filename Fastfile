@@ -38,37 +38,7 @@ def generateReleaseNote
     end
     return changelog
 end
-#def distributeFabric(changelog)
-#    $FABRIC_SCHEMES.any? {
-#    	$FABRIC_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile|
-#           doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'ad-hoc')
-#	}
-#    }
-#    $FABRIC_DEV_SCHEMES.any? {
-#        $FABRIC_DEV_SCHEMES.each { |scheme,configuration,bundleID, provisioningProfile|
-#	   doDistributeFabric(scheme,configuration,bundleID, provisioningProfile,changelog,'development')
-#        }
-#    }
-    
-#end
-#def doDistributeFabric(scheme, configuration,bundleID,provisioningProfile,changelog,export_method)
-#	gym(scheme: scheme,skip_profile_detection:true,configuration:configuration,export_method:export_method,export_options:{
-#     		  provisioningProfiles: {
-#		        bundleID => provisioningProfile,
-#		      }
-#	    }
-#	) # Build your app - more options available
-#	puts $FABRIC_GROUPS
-#	puts ENV["CRASHLYTICS_API_TOKEN"]
-#	puts ENV["CRASHLYTICS_BUILD_SECRET"]
-#        crashlytics(
-#	    crashlytics_path: './Pods/Crashlytics/Crashlytics.framework',
-#            api_token: ENV["CRASHLYTICS_API_TOKEN"],
-#            build_secret: ENV["CRASHLYTICS_BUILD_SECRET"],
-#            groups:$FABRIC_GROUPS,
-#            notes: changelog)
 
-#end
 
 def doDistributeAppleStore()
 	$SCHEME_INFOS.each { |scheme, bundleId |
@@ -152,10 +122,17 @@ platform :ios do
     $SCHEME_INFOS.any? {
     	if !options[:nobuild]
         	$SCHEME_INFOS.each { |scheme, bundleId |
-			build_app(workspace:$WORKSPACE + ".xcworkspace",
-				scheme:scheme,
-				output_name: scheme + ".ipa",
-				export_options: $EXPORT_OPTIONS)
+			if $WORKSPACE == ""
+				build_app(scheme:scheme,
+					output_name: scheme + ".ipa",
+					export_options: $EXPORT_OPTIONS)
+			else
+
+				build_app(workspace:$WORKSPACE + ".xcworkspace",
+					scheme:scheme,
+					output_name: scheme + ".ipa",
+					export_options: $EXPORT_OPTIONS)
+                        end
 		}
 	end
 	$SCHEME_INFOS.each { |scheme, bundleId |
@@ -177,33 +154,6 @@ platform :ios do
     }
  
   end
-
-
-
-#  desc "Deploy a new version to Fabric"
-#  lane :Fabric do
-
-#    increment_build_number   
-#    changelog = generateReleaseNote()
-#    unless changelog.nil?
-#	puts changelog
-#    end
-#    distributeFabric(changelog)
-#    unless MAIN_PROJECT.nil?
-#	commit_version_bump(
-#		force:true,
-#		xcodeproj: MAIN_PROJECT
-#		)
-#    else
-#	commit_version_bump(
-#		force:true,
-#		)
-#    end
-
-#    add_git_tag(
-#            tag:"build/" + $tagPrefix + "v" + get_build_number()
-#            )
-#  end
 
 end
 
