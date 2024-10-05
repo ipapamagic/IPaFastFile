@@ -24,6 +24,10 @@ $SCHEME_INFOS = []
 $tagPrefix = ""
 $MAIN_PROJECT = nil
 $EXPORT_OPTIONS = {}
+$APP_STORE_CONNECT_API_KEY_KEY_ID = ""
+$APP_STORE_CONNECT_API_KEY_ISSUER_ID = ""
+$APP_STORE_CONNECT_API_KEY_KEYFILE = ""
+
 def generateReleaseNote
     count = sh("git describe --match \"distribute/v*\" | wc -l")
     changelog = "no log...."
@@ -43,18 +47,18 @@ end
 def doDistributeAppleStore()
 	$SCHEME_INFOS.each { |scheme, bundleId |
 		gym(scheme: scheme, 
-                skip_profile_detection:true,
+                skip_profile_detection:false,
                 include_bitcode:true,
                 include_symbols:true,
-                export_method: "app-store",
-			export_options: {
-    				provisioningProfiles: profiles
-			}) # Build your app - more options available
-            deliver(app_identifier: bundleId,
+                export_method: "app-store-connect")
+			# export_options: {
+    				# provisioningProfiles: profiles
+			# }) # Build your app - more options available
+        deliver(app_identifier: bundleId,
 			skip_screenshots: true,
-        	        skip_metadata: true,
-                	submit_for_review: false,
-                    skip_binary_upload: false)
+           	skip_metadata: true,
+            submit_for_review: false,
+			skip_binary_upload: false)
 	}
 	
 end 
@@ -84,6 +88,12 @@ platform :ios do
   lane :Distribute do
     # match(type: "appstore")
     # snapshot
+    app_store_connect_api_key(
+  	key_id: $APP_STORE_CONNECT_API_KEY_KEY_ID,
+	issuer_id: $APP_STORE_CONNECT_API_KEY_ISSUER_ID,
+	key_filepath: $APP_STORE_CONNECT_API_KEY_KEYFILE, # 使用相對或絕對路徑
+	in_house: false # 如果是企業帳號則設為 true，否則設為 false
+    )
     doDistributeAppleStore()
     # frameit 
     add_git_tag(
@@ -96,6 +106,16 @@ platform :ios do
   lane :UploadTestFlight do |options|
     # match(type: "appstore")
     # snapshot
+
+    app_store_connect_api_key(
+  	key_id: $APP_STORE_CONNECT_API_KEY_KEY_ID,
+	issuer_id: $APP_STORE_CONNECT_API_KEY_ISSUER_ID,
+	key_filepath: $APP_STORE_CONNECT_API_KEY_KEYFILE, # 使用相對或絕對路徑
+	in_house: false # 如果是企業帳號則設為 true，否則設為 false
+    )
+
+
+
     if !options[:nobump]
 	
  
