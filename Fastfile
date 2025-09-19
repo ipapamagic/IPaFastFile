@@ -23,7 +23,7 @@ $WORKSPACE = ""
 $SCHEME_INFOS = []
 $tagPrefix = ""
 $MAIN_PROJECT = nil
-$EXPORT_OPTIONS = {}
+$PROVISIONING_PROFILES = {}
 $APP_STORE_CONNECT_API_KEY_KEY_ID = ""
 $APP_STORE_CONNECT_API_KEY_ISSUER_ID = ""
 $APP_STORE_CONNECT_API_KEY_KEYFILE = ""
@@ -142,16 +142,24 @@ platform :ios do
     $SCHEME_INFOS.any? {
     	if !options[:nobuild]
         	$SCHEME_INFOS.each { |scheme, bundleId |
+			export_options = {
+				method: "app-store-connect"
+			}
+
+			if defined?($PROVISIONING_PROFILES) && !$PROVISIONING_PROFILES.empty?
+				export_options[:provisioningProfiles] = $PROVISIONING_PROFILES
+			end
+
 			if $WORKSPACE == ""
 				build_app(scheme:scheme,
 					output_name: scheme + ".ipa",
-					export_options: $EXPORT_OPTIONS)
+					export_options: export_options)
 			else
 
 				build_app(workspace:$WORKSPACE + ".xcworkspace",
 					scheme:scheme,
 					output_name: scheme + ".ipa",
-					export_options: $EXPORT_OPTIONS)
+					export_options: export_options)
                         end
 		}
 	end
