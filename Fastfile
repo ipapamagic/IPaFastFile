@@ -50,7 +50,7 @@ def doDistributeAppleStore()
                 skip_profile_detection:false,
                 include_bitcode:true,
                 include_symbols:true,
-                export_method: "app-store-connect")
+                export_method: "app-store")
 			# export_options: {
     				# provisioningProfiles: profiles
 			# }) # Build your app - more options available
@@ -143,7 +143,7 @@ platform :ios do
     	if !options[:nobuild]
         	$SCHEME_INFOS.each { |scheme, bundleId |
 			export_options = {
-				method: "app-store-connect"
+				method: "app-store"
 			}
 
 			if defined?($PROVISIONING_PROFILES) && !$PROVISIONING_PROFILES.empty?
