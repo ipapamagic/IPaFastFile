@@ -140,7 +140,7 @@ platform :ios do
     end
 
     # 設置 App Store Connect API Key
-    app_store_connect_api_key(
+    api_key = app_store_connect_api_key(
       key_id: $APP_STORE_CONNECT_API_KEY_KEY_ID,
       issuer_id: $APP_STORE_CONNECT_API_KEY_ISSUER_ID,
       key_filepath: $APP_STORE_CONNECT_API_KEY_KEYFILE,
@@ -230,6 +230,7 @@ platform :ios do
       begin
         if !options[:changelog]
           upload_to_testflight(
+            api_key: api_key,
             app_identifier: bundle_id,
             skip_submission: true,
             skip_waiting_for_build_processing: true,
@@ -237,6 +238,7 @@ platform :ios do
           )
         else
           upload_to_testflight(
+            api_key: api_key,
             app_identifier: bundle_id,
             changelog: changelog,
             ipa: "#{scheme}.ipa"
