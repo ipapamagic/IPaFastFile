@@ -34,32 +34,69 @@ $APP_STORE_CONNECT_API_KEY_KEYFILE = ""
 # 從 Xcode 專案自動提取 scheme 的 bundle ID
 def get_bundle_id_for_scheme(scheme)
   begin
-    # 嘗試從 build settings 中獲取 bundle ID
+    # 使用 fastlane 內建的方法獲取 bundle ID
     if $WORKSPACE != ""
-      # 使用 workspace (將 stderr 重定向到 /dev/null 避免污染輸出)
-      result = sh("xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
+      bundle_id = get_info_plist_value(
+        path: "../#{$WORKSPACE}/Info.plist",
+        key: "CFBundleIdentifier"
+      )
     else
       # 查找 .xcodeproj 文件
       xcodeproj = Dir.glob("../*.xcodeproj").first
       if xcodeproj
-        project_name = File.basename(xcodeproj)
-        result = sh("xcodebuild -project ../#{project_name} -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
+        project_name = File.basename(xcodeproj, ".xcodeproj")
+        bundle_id = get_info_plist_value(
+          path: "../#{project_name}/Info.plist",
+          key: "CFBundleIdentifier"
+        )
       else
         UI.error("找不到 .xcodeproj 文件")
         return nil
       end
     end
 
-    if result && !result.empty?
-      UI.message("✓ Scheme '#{scheme}' 的 Bundle ID: #{result}")
-      return result
+    if bundle_id && !bundle_id.empty?
+      # 如果 bundle ID 包含變數（如 $(PRODUCT_BUNDLE_IDENTIFIER)），使用 xcodebuild
+      if bundle_id.include?("$")
+        UI.message("Bundle ID 包含變數，使用 xcodebuild 獲取實際值...")
+        if $WORKSPACE != ""
+          result = sh("xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep -m 1 '\\sPRODUCT_BUNDLE_IDENTIFIER =' | sed 's/.*= //'").strip
+        else
+          xcodeproj = Dir.glob("../*.xcodeproj").first
+          project_name = File.basename(xcodeproj)
+          result = sh("xcodebuild -project ../#{project_name} -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep -m 1 '\\sPRODUCT_BUNDLE_IDENTIFIER =' | sed 's/.*= //'").strip
+        end
+        bundle_id = result if result && !result.empty?
+      end
+
+      UI.message("✓ Scheme '#{scheme}' 的 Bundle ID: #{bundle_id}")
+      return bundle_id
     else
       UI.error("無法獲取 scheme '#{scheme}' 的 Bundle ID")
       return nil
     end
   rescue => ex
     UI.error("獲取 Bundle ID 時發生錯誤: #{ex.message}")
-    return nil
+    # 如果上面的方法失敗，回退到使用 xcodebuild
+    begin
+      if $WORKSPACE != ""
+        result = sh("xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep -m 1 '\\sPRODUCT_BUNDLE_IDENTIFIER =' | sed 's/.*= //'").strip
+      else
+        xcodeproj = Dir.glob("../*.xcodeproj").first
+        project_name = File.basename(xcodeproj)
+        result = sh("xcodebuild -project ../#{project_name} -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep -m 1 '\\sPRODUCT_BUNDLE_IDENTIFIER =' | sed 's/.*= //'").strip
+      end
+
+      if result && !result.empty?
+        UI.message("✓ Scheme '#{scheme}' 的 Bundle ID: #{result}")
+        return result
+      else
+        return nil
+      end
+    rescue => ex2
+      UI.error("回退方法也失敗: #{ex2.message}")
+      return nil
+    end
   end
 end
 
@@ -230,7 +267,6 @@ platform :ios do
       begin
         if !options[:changelog]
           upload_to_testflight(
-            api_key: api_key,
             app_identifier: bundle_id,
             skip_submission: true,
             skip_waiting_for_build_processing: true,
@@ -238,7 +274,6 @@ platform :ios do
           )
         else
           upload_to_testflight(
-            api_key: api_key,
             app_identifier: bundle_id,
             changelog: changelog,
             ipa: "#{scheme}.ipa"
