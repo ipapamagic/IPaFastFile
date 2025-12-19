@@ -140,6 +140,12 @@ platform :ios do
     end
 
     # 設置 App Store Connect API Key
+    UI.message("🔑 API Key 配置:")
+    UI.message("  Key ID: #{$APP_STORE_CONNECT_API_KEY_KEY_ID}")
+    UI.message("  Issuer ID: #{$APP_STORE_CONNECT_API_KEY_ISSUER_ID}")
+    UI.message("  Key File: #{$APP_STORE_CONNECT_API_KEY_KEYFILE}")
+    UI.message("  File exists: #{File.exist?($APP_STORE_CONNECT_API_KEY_KEYFILE)}")
+
     api_key = app_store_connect_api_key(
       key_id: $APP_STORE_CONNECT_API_KEY_KEY_ID,
       issuer_id: $APP_STORE_CONNECT_API_KEY_ISSUER_ID,
