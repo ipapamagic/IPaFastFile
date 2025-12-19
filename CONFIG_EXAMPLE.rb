@@ -45,35 +45,12 @@
 
 
 # ============================================
-# 範例 4: 需要手動指定 Provisioning Profile
+# 範例 4: 完整配置（所有選項）
 # ============================================
-# $SCHEMES = ["MyApp", "MyAppWidget"]
-# $WORKSPACE = "MyApp"
-#
-# # 手動指定 provisioning profiles（覆蓋自動配置）
-# $PROVISIONING_PROFILES = {
-#   "com.example.myapp" => "MyApp AppStore Profile",
-#   "com.example.myapp.widget" => "Widget AppStore Profile"
-# }
-#
-# $APP_STORE_CONNECT_API_KEY_KEY_ID = "ABC123XYZ"
-# $APP_STORE_CONNECT_API_KEY_ISSUER_ID = "12345678-abcd-1234-abcd-123456789012"
-# $APP_STORE_CONNECT_API_KEY_KEYFILE = "./AuthKey_ABC123XYZ.p8"
-
-
-# ============================================
-# 範例 5: 完整配置（所有選項）
-# ============================================
-# $SCHEMES = ["MyApp", "MyAppWidget"]
+# $SCHEMES = ["MyApp-Dev", "MyApp-Prod"]
 # $WORKSPACE = "MyApp"
 # $tagPrefix = "MyApp-"  # Git tag 前綴，例如: distribute/MyApp-v1.0/123
 # $MAIN_PROJECT = "MyApp.xcodeproj"  # 主專案名稱（用於 version bump commit）
-#
-# # Optional: 手動指定 provisioning profiles
-# $PROVISIONING_PROFILES = {
-#   "com.example.myapp" => "MyApp AppStore Profile",
-#   "com.example.myapp.widget" => "Widget AppStore Profile"
-# }
 #
 # $APP_STORE_CONNECT_API_KEY_KEY_ID = "ABC123XYZ"
 # $APP_STORE_CONNECT_API_KEY_ISSUER_ID = "12345678-abcd-1234-abcd-123456789012"

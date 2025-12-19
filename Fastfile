@@ -5,7 +5,7 @@
 default_platform :ios
 
 # ============================================
-# 2.0 Simplified Configuration (只需要配置這些)
+# 2.0 Configuration
 # ============================================
 # 只需要提供主 app 的 scheme list
 # 注意：Extensions (Widget, Share Extension 等) 不需要加入，它們會自動跟隨主 app 打包
@@ -21,19 +21,10 @@ $tagPrefix = ""
 # Optional: 主專案名稱（用於 version bump commit）
 $MAIN_PROJECT = nil
 
-# Optional: 如果需要手動指定 provisioning profiles (舊版兼容)
-# 格式: { "com.example.app" => "ProfileName", "com.example.app.widget" => "WidgetProfileName" }
-$PROVISIONING_PROFILES = {}
-
 # App Store Connect API Key (必填 - 用於上傳到 TestFlight)
 $APP_STORE_CONNECT_API_KEY_KEY_ID = ""
 $APP_STORE_CONNECT_API_KEY_ISSUER_ID = ""
 $APP_STORE_CONNECT_API_KEY_KEYFILE = ""
-
-# ============================================
-# 向後兼容：舊版配置仍然支持
-# ============================================
-$SCHEME_INFOS = []  # 舊版格式: [["SchemeName", "bundle.id"], ...]
 
 
 # ============================================
@@ -76,13 +67,6 @@ end
 def build_scheme_infos
   scheme_infos = []
 
-  # 檢查是否使用舊版配置
-  if defined?($SCHEME_INFOS) && !$SCHEME_INFOS.empty?
-    UI.important("⚠️  使用舊版配置 $SCHEME_INFOS（建議遷移到 2.0 配置）")
-    return $SCHEME_INFOS
-  end
-
-  # 使用新版配置：自動提取 bundle ID
   if defined?($SCHEMES) && !$SCHEMES.empty?
     UI.message("🔍 正在自動提取 schemes 的配置信息...")
     $SCHEMES.each do |scheme|
@@ -96,7 +80,7 @@ def build_scheme_infos
     return scheme_infos
   end
 
-  UI.error("❌ 請配置 $SCHEMES 或 $SCHEME_INFOS")
+  UI.error("❌ 請配置 $SCHEMES")
   return []
 end
 
@@ -167,7 +151,7 @@ platform :ios do
     scheme_infos = build_scheme_infos
 
     if scheme_infos.empty?
-      UI.user_error!("❌ 沒有可用的 scheme 配置，請檢查 $SCHEMES 或 $SCHEME_INFOS")
+      UI.user_error!("❌ 沒有可用的 scheme 配置，請檢查 $SCHEMES")
     end
 
     UI.message("📦 準備處理的 schemes:")
@@ -208,19 +192,10 @@ platform :ios do
       scheme_infos.each do |scheme, bundle_id|
         UI.message("正在構建: #{scheme}")
 
-        # 準備 export options
+        # 準備 export options（使用 Xcode 自動配置）
         export_options = {
           method: "app-store"
         }
-
-        # 如果用戶指定了 provisioning profiles，使用它們
-        if defined?($PROVISIONING_PROFILES) && !$PROVISIONING_PROFILES.empty?
-          export_options[:provisioningProfiles] = $PROVISIONING_PROFILES
-          UI.message("使用手動指定的 Provisioning Profiles")
-        else
-          # 否則讓 Xcode 自動處理
-          UI.message("使用 Xcode 自動配置的 Provisioning Profiles")
-        end
 
         # Build
         if $WORKSPACE == ""
@@ -245,28 +220,54 @@ platform :ios do
     # Upload to TestFlight
     UI.message("☁️  開始上傳到 TestFlight...")
 
+    # 記錄上傳結果
+    upload_success = []
+    upload_failed = []
+
     scheme_infos.each do |scheme, bundle_id|
       UI.message("正在上傳: #{scheme}")
 
-      if !options[:changelog]
-        upload_to_testflight(
-          app_identifier: bundle_id,
-          skip_submission: true,
-          skip_waiting_for_build_processing: true,
-          ipa: "#{scheme}.ipa"
-        )
-      else
-        upload_to_testflight(
-          app_identifier: bundle_id,
-          changelog: changelog,
-          ipa: "#{scheme}.ipa"
-        )
-      end
+      begin
+        if !options[:changelog]
+          upload_to_testflight(
+            app_identifier: bundle_id,
+            skip_submission: true,
+            skip_waiting_for_build_processing: true,
+            ipa: "#{scheme}.ipa"
+          )
+        else
+          upload_to_testflight(
+            app_identifier: bundle_id,
+            changelog: changelog,
+            ipa: "#{scheme}.ipa"
+          )
+        end
 
-      UI.success("✓ #{scheme} 上傳完成")
+        UI.success("✓ #{scheme} 上傳完成")
+        upload_success << scheme
+      rescue => ex
+        UI.error("✗ #{scheme} 上傳失敗: #{ex.message}")
+        upload_failed << scheme
+        # 繼續處理下一個 scheme
+      end
     end
 
-    UI.success("🎉 所有任務完成！")
+    # 顯示最終結果
+    UI.message("\n" + "=" * 50)
+    if upload_success.any?
+      UI.success("✓ 上傳成功 (#{upload_success.count}): #{upload_success.join(', ')}")
+    end
+    if upload_failed.any?
+      UI.error("✗ 上傳失敗 (#{upload_failed.count}): #{upload_failed.join(', ')}")
+      UI.important("請檢查失敗的 schemes 並重新上傳")
+    end
+    UI.message("=" * 50)
+
+    if upload_failed.empty?
+      UI.success("🎉 所有任務完成！")
+    else
+      UI.important("⚠️  部分任務完成，#{upload_failed.count} 個 scheme 上傳失敗")
+    end
   end
 
 end
