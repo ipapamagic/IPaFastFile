@@ -36,14 +36,14 @@ def get_bundle_id_for_scheme(scheme)
   begin
     # 嘗試從 build settings 中獲取 bundle ID
     if $WORKSPACE != ""
-      # 使用 workspace
-      result = sh("xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -scheme '#{scheme}' -showBuildSettings | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
+      # 使用 workspace (將 stderr 重定向到 /dev/null 避免污染輸出)
+      result = sh("xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
     else
       # 查找 .xcodeproj 文件
       xcodeproj = Dir.glob("../*.xcodeproj").first
       if xcodeproj
         project_name = File.basename(xcodeproj)
-        result = sh("xcodebuild -project ../#{project_name} -scheme '#{scheme}' -showBuildSettings | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
+        result = sh("xcodebuild -project ../#{project_name} -scheme '#{scheme}' -showBuildSettings 2>/dev/null | grep 'PRODUCT_BUNDLE_IDENTIFIER' | head -n 1 | awk '{print $3}'").strip
       else
         UI.error("找不到 .xcodeproj 文件")
         return nil
@@ -140,13 +140,7 @@ platform :ios do
     end
 
     # 設置 App Store Connect API Key
-    UI.message("🔑 API Key 配置:")
-    UI.message("  Key ID: #{$APP_STORE_CONNECT_API_KEY_KEY_ID}")
-    UI.message("  Issuer ID: #{$APP_STORE_CONNECT_API_KEY_ISSUER_ID}")
-    UI.message("  Key File: #{$APP_STORE_CONNECT_API_KEY_KEYFILE}")
-    UI.message("  File exists: #{File.exist?($APP_STORE_CONNECT_API_KEY_KEYFILE)}")
-
-    api_key = app_store_connect_api_key(
+    app_store_connect_api_key(
       key_id: $APP_STORE_CONNECT_API_KEY_KEY_ID,
       issuer_id: $APP_STORE_CONNECT_API_KEY_ISSUER_ID,
       key_filepath: $APP_STORE_CONNECT_API_KEY_KEYFILE,
