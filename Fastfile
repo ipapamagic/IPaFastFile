@@ -31,6 +31,29 @@ $APP_STORE_CONNECT_API_KEY_KEYFILE = ""
 # Helper Functions
 # ============================================
 
+# 從 Xcode 專案自動提取開發團隊 ID
+def get_development_team
+  begin
+    if $WORKSPACE != ""
+      cmd = "xcodebuild -workspace ../#{$WORKSPACE}.xcworkspace -showBuildSettings 2>/dev/null"
+    else
+      xcodeproj = Dir.glob("../*.xcodeproj").first
+      if xcodeproj
+        project_name = File.basename(xcodeproj)
+        cmd = "xcodebuild -project ../#{project_name} -showBuildSettings 2>/dev/null"
+      else
+        return nil
+      end
+    end
+
+    result = sh("#{cmd} | grep -E '^[[:space:]]+DEVELOPMENT_TEAM = ' | head -n 1 | awk -F ' = ' '{print $2}'").strip
+    return result if result && !result.empty?
+  rescue => ex
+    UI.error("無法獲取 Development Team: #{ex.message}")
+  end
+  return nil
+end
+
 # 從 Xcode 專案自動提取 scheme 的 bundle ID
 def get_bundle_id_for_scheme(scheme)
   begin
@@ -194,6 +217,12 @@ platform :ios do
     if !options[:nobuild]
       UI.message("🔨 開始構建...")
 
+      # 獲取開發團隊 ID（用於自動簽名）
+      team_id = get_development_team
+      if team_id
+        UI.message("✓ Development Team: #{team_id}")
+      end
+
       scheme_infos.each do |scheme, bundle_id|
         UI.message("正在構建: #{scheme}")
 
@@ -201,6 +230,11 @@ platform :ios do
         export_options = {
           method: "app-store"
         }
+
+        # 如果有團隊 ID，加入 export options（自動簽名需要）
+        if team_id
+          export_options[:teamID] = team_id
+        end
 
         # Build
         if $WORKSPACE == ""
