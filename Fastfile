@@ -199,8 +199,7 @@ platform :ios do
 
         # 準備 export options（使用 Xcode 自動配置）
         export_options = {
-          method: "app-store-connect",
-          signingStyle: "automatic"
+          method: "app-store"
         }
 
         # Build
