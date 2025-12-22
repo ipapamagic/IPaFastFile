@@ -199,7 +199,8 @@ platform :ios do
 
         # 準備 export options（使用 Xcode 自動配置）
         export_options = {
-          method: "app-store"
+          method: "app-store-connect",
+          signingStyle: "automatic"
         }
 
         # Build
@@ -207,14 +208,16 @@ platform :ios do
           build_app(
             scheme: scheme,
             output_name: "#{scheme}.ipa",
-            export_options: export_options
+            export_options: export_options,
+            export_xcargs: "-allowProvisioningUpdates"
           )
         else
           build_app(
             workspace: "#{$WORKSPACE}.xcworkspace",
             scheme: scheme,
             output_name: "#{scheme}.ipa",
-            export_options: export_options
+            export_options: export_options,
+            export_xcargs: "-allowProvisioningUpdates"
           )
         end
 
