@@ -228,7 +228,9 @@ platform :ios do
 
         # 準備 export options（使用 Xcode 自動配置）
         export_options = {
-          method: "app-store"
+          method: "app-store",
+          signingStyle: "automatic",
+          uploadSymbols: true
         }
 
         # 如果有團隊 ID，加入 export options（自動簽名需要）
