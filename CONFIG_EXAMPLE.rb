@@ -72,16 +72,80 @@
 
 
 # ============================================
-# 使用方法
+# 使用方法（iOS）
 # ============================================
 # 完整流程（version bump + build + upload）:
-#   fastlane UploadTestFlight
+#   fastlane ios UploadTestFlight
 #
 # 跳過 version bump:
-#   fastlane UploadTestFlight nobump:true
+#   fastlane ios UploadTestFlight nobump:true
 #
 # 只上傳已有的 ipa（自動跳過 version bump 和 build）:
-#   fastlane UploadTestFlight nobuild:true
+#   fastlane ios UploadTestFlight nobuild:true
 #
 # 包含 changelog:
-#   fastlane UploadTestFlight changelog:true
+#   fastlane ios UploadTestFlight changelog:true
+
+
+# ============================================
+# Android（Google Play）配置
+# ============================================
+# 專案的 fastlane/Fastfile 只需要放這些設定，lane 邏輯一樣集中在 IPaFastFile。
+# 專案結構需符合標準 Android Studio 專案（fastlane/ 與 app/、gradlew 同層）。
+
+# ============================================
+# 範例 1: 最簡配置
+# ============================================
+# $ANDROID_PACKAGE_NAME = "com.example.myapp"
+# $ANDROID_JSON_KEY_FILE = "~/Documents/Google/MyApp/play-store-key.json"
+
+
+# ============================================
+# 範例 2: 完整配置（所有選項）
+# ============================================
+# $ANDROID_PACKAGE_NAME = "com.example.myapp"
+# $ANDROID_JSON_KEY_FILE = ENV["ANDROID_JSON_KEY_PATH"] || "~/Documents/Google/MyApp/play-store-key.json"
+# $ANDROID_BUILD_GRADLE = "app/build.gradle"     # 相對於專案根目錄，用於讀取/更新 versionCode、versionName
+# $ANDROID_GRADLE_MODULE = "app"                 # gradle module 名稱，決定 build task 與預設 AAB 路徑
+# $ANDROID_AAB_PATH = nil                        # 留空則用預設路徑 "app/build/outputs/bundle/release/app-release.aab"
+# $ANDROID_TRACK = "internal"                    # Google Play track: internal / alpha / beta / production
+# $ANDROID_RELEASE_NOTES_LANG = "en-US"          # changelog 語系
+# $tagPrefix = "MyApp-"                          # 與 iOS 共用，可用來區分 tag，例如 distribute/MyApp-android-v1.0/5
+
+
+# ============================================
+# 如何取得 Google Play Service Account JSON Key
+# ============================================
+# 1. 登入 https://play.google.com/console
+# 2. 「使用者和權限」>「服務帳戶」>「在 Google Cloud Console 建立新的服務帳戶」
+# 3. 在 Google Cloud Console 建立服務帳戶並下載 JSON 金鑰
+# 4. 回到 Play Console 把該服務帳戶加入為使用者，並授予「發布應用程式」等必要權限
+# 5. 把下載的 JSON 檔放在專案外（例如 ~/Documents/Google/…），絕對不要 commit 進 repo
+# 6. $ANDROID_JSON_KEY_FILE 指向該檔案路徑（可用環境變數間接指定，避免明碼寫死路徑）
+
+
+# ============================================
+# 使用方法（Android）
+# ============================================
+# 完整流程（version bump + build + upload）:
+#   fastlane android UploadGoogle
+#
+# 跳過 version bump:
+#   fastlane android UploadGoogle nobump:true
+#
+# 只上傳已有的 aab（自動跳過 version bump 和 build）:
+#   fastlane android UploadGoogle nobuild:true
+#
+# 包含 changelog:
+#   fastlane android UploadGoogle changelog:true
+#
+# 流程細節：
+# 1. nobuild:true 會自動一併設 nobump。
+# 2. 非 nobump 時：遞增 app/build.gradle 的 versionCode → git commit → 建立 tag
+#    distribute/#{$tagPrefix}android-v#{versionName}/#{versionCode}
+# 3. build 使用 `./gradlew --no-daemon :app:bundleRelease` 產生 AAB。
+# 4. 上傳前用 jarsigner 驗證 AAB 簽名，未簽名或驗證失敗會直接中止。
+# 5. 上傳採用 fastlane upload_to_play_store（supply），預設 skip metadata/images/
+#    screenshots/changelogs；帶 changelog:true 時才會建立暫存的 metadata 目錄
+#    （<lang>/changelogs/<versionCode>.txt）並透過 metadata_path 只上傳 changelog 文字，
+#    不需要 repo 裡有完整的 metadata。

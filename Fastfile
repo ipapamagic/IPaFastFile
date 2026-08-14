@@ -2,6 +2,9 @@
 # Documentation: https://github.com/fastlane/fastlane/tree/master/docs
 # All available actions: https://github.com/fastlane/fastlane/blob/master/docs/Actions.md
 
+require 'tmpdir'
+require 'fileutils'
+
 default_platform :ios
 
 # ============================================
@@ -25,6 +28,31 @@ $MAIN_PROJECT = nil
 $APP_STORE_CONNECT_API_KEY_KEY_ID = ""
 $APP_STORE_CONNECT_API_KEY_ISSUER_ID = ""
 $APP_STORE_CONNECT_API_KEY_KEYFILE = ""
+
+# ============================================
+# Android (Google Play) Configuration
+# ============================================
+# 應用程式的 package name，例如: "com.example.myapp"（必填 - 用於上傳到 Google Play）
+$ANDROID_PACKAGE_NAME = ""
+
+# Google Play Service Account JSON Key 檔案路徑（必填，勿 commit 進 repo）
+$ANDROID_JSON_KEY_FILE = ""
+
+# Optional: app/build.gradle 相對於專案根目錄的路徑（用於讀取/更新 versionCode、versionName）
+$ANDROID_BUILD_GRADLE = "app/build.gradle"
+
+# Optional: Gradle module 名稱（用於決定 build task 與預設 AAB 路徑）
+$ANDROID_GRADLE_MODULE = "app"
+
+# Optional: AAB 檔案路徑（相對於專案根目錄）。留空則使用預設路徑：
+# "#{$ANDROID_GRADLE_MODULE}/build/outputs/bundle/release/#{$ANDROID_GRADLE_MODULE}-release.aab"
+$ANDROID_AAB_PATH = nil
+
+# Optional: Google Play track，預設 "internal"
+$ANDROID_TRACK = "internal"
+
+# Optional: changelog 使用的語系
+$ANDROID_RELEASE_NOTES_LANG = "en-US"
 
 
 # ============================================
@@ -125,6 +153,57 @@ def generateReleaseNote
       include_merges: false)
   end
   return changelog
+end
+
+# 取得 app/build.gradle 的完整路徑（相對於專案根目錄）
+def android_gradle_path
+  File.expand_path("../#{$ANDROID_BUILD_GRADLE}")
+end
+
+# 從 build.gradle 讀取 versionCode
+def get_android_version_code(gradle_path)
+  content = File.read(gradle_path)
+  match = content.match(/versionCode\s*=?\s*(\d+)/)
+  UI.user_error!("❌ 在 #{gradle_path} 找不到 versionCode") unless match
+  match[1].to_i
+end
+
+# 從 build.gradle 讀取 versionName
+def get_android_version_name(gradle_path)
+  content = File.read(gradle_path)
+  match = content.match(/versionName\s*=?\s*["']([^"']+)["']/)
+  UI.user_error!("❌ 在 #{gradle_path} 找不到 versionName") unless match
+  match[1]
+end
+
+# 將 build.gradle 的 versionCode 加一，回傳新的 versionCode
+def increment_android_version_code!(gradle_path)
+  content = File.read(gradle_path)
+  new_version_code = get_android_version_code(gradle_path) + 1
+  updated = content.sub(/versionCode(\s*=?\s*)\d+/, "versionCode\\1#{new_version_code}")
+  File.write(gradle_path, updated)
+  new_version_code
+end
+
+# 計算預設的 AAB 輸出路徑（相對於專案根目錄）
+def android_aab_relative_path
+  return $ANDROID_AAB_PATH unless $ANDROID_AAB_PATH.to_s.empty?
+  "#{$ANDROID_GRADLE_MODULE}/build/outputs/bundle/release/#{$ANDROID_GRADLE_MODULE}-release.aab"
+end
+
+# 用 jarsigner 驗證 AAB 簽名，未簽名或驗證失敗會直接拋出例外中止 lane
+def verify_aab_signature(aab_path)
+  sh("jarsigner -verify -verbose -certs '#{aab_path}'")
+end
+
+# 建立暫時的 supply metadata 目錄，只放 changelog 檔案（<lang>/changelogs/<version_code>.txt）
+# 這樣可以只上傳 changelog，不需要 repo 裡有完整的 metadata/screenshots
+def build_changelog_metadata_dir(version_code, changelog)
+  dir = Dir.mktmpdir("ipafastfile_android_changelog")
+  changelogs_dir = File.join(dir, $ANDROID_RELEASE_NOTES_LANG, "changelogs")
+  FileUtils.mkdir_p(changelogs_dir)
+  File.write(File.join(changelogs_dir, "#{version_code}.txt"), changelog)
+  dir
 end
 
 
@@ -310,6 +389,95 @@ platform :ios do
       UI.success("🎉 所有任務完成！")
     else
       UI.important("⚠️  部分任務完成，#{upload_failed.count} 個 scheme 上傳失敗")
+    end
+  end
+
+end
+
+platform :android do
+  desc "Deploy a new version to Google Play with version bump"
+  desc "Options:"
+  desc "  nobump: 跳過 version bump"
+  desc "  nobuild: 跳過 build（只上傳已有的 aab，自動跳過 version bump）"
+  desc "  changelog: 是否包含 changelog"
+  lane :UploadGoogle do |options|
+    # 如果 nobuild，自動設置 nobump
+    if options[:nobuild]
+      options[:nobump] = true
+      UI.message("⚠️  nobuild 模式：自動跳過 version bump")
+    end
+
+    UI.user_error!("❌ 請設定 $ANDROID_PACKAGE_NAME") if $ANDROID_PACKAGE_NAME.to_s.empty?
+    UI.user_error!("❌ 請設定 $ANDROID_JSON_KEY_FILE") if $ANDROID_JSON_KEY_FILE.to_s.empty?
+
+    gradle_path = android_gradle_path
+    UI.user_error!("❌ 找不到 #{gradle_path}") unless File.exist?(gradle_path)
+
+    # Version Bump
+    if !options[:nobump]
+      version_code = increment_android_version_code!(gradle_path)
+      UI.success("✓ versionCode 已更新為 #{version_code}")
+
+      git_commit(
+        path: [gradle_path],
+        message: "Version Bump: versionCode #{version_code}"
+      )
+
+      version_name = get_android_version_name(gradle_path)
+      tag = "distribute/#{$tagPrefix}android-v#{version_name}/#{version_code}"
+
+      add_git_tag(tag: tag)
+      UI.success("✓ 已創建 tag: #{tag}")
+    end
+
+    # 生成 changelog
+    changelog = generateReleaseNote()
+
+    # Build
+    if !options[:nobuild]
+      UI.message("🔨 開始構建 AAB...")
+      sh("cd .. && ./gradlew --no-daemon :#{$ANDROID_GRADLE_MODULE}:bundleRelease")
+      UI.success("✓ AAB 構建完成")
+    end
+
+    aab_path = File.expand_path("../#{android_aab_relative_path}")
+    UI.user_error!("❌ 找不到 AAB 檔案: #{aab_path}") unless File.exist?(aab_path)
+
+    UI.message("🔍 驗證 AAB 簽名...")
+    verify_aab_signature(aab_path)
+    UI.success("✓ AAB 簽名驗證通過")
+
+    # Upload to Google Play
+    UI.message("☁️  開始上傳到 Google Play (#{$ANDROID_TRACK})...")
+
+    changelog_metadata_dir = nil
+
+    begin
+      upload_params = {
+        package_name: $ANDROID_PACKAGE_NAME,
+        aab: aab_path,
+        json_key: $ANDROID_JSON_KEY_FILE,
+        track: $ANDROID_TRACK,
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true,
+        skip_upload_changelogs: !options[:changelog]
+      }
+
+      if options[:changelog]
+        version_code = get_android_version_code(gradle_path)
+        changelog_metadata_dir = build_changelog_metadata_dir(version_code, changelog)
+        upload_params[:metadata_path] = changelog_metadata_dir
+      end
+
+      upload_to_play_store(upload_params)
+
+      UI.success("🎉 上傳完成！")
+    rescue => ex
+      UI.error("✗ 上傳失敗: #{ex.message}")
+      UI.user_error!("Google Play 上傳失敗，請檢查後重新上傳（可用 nobuild:true 重試上傳既有的 aab）")
+    ensure
+      FileUtils.remove_entry(changelog_metadata_dir) if changelog_metadata_dir && Dir.exist?(changelog_metadata_dir)
     end
   end
 
