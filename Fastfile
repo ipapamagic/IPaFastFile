@@ -54,6 +54,21 @@ $ANDROID_TRACK = "internal"
 # Optional: changelog 使用的語系
 $ANDROID_RELEASE_NOTES_LANG = "en-US"
 
+# Optional: versionCode 來源，"gradle"（預設，數字寫死在 build.gradle）或 "git_tag"
+# （由 git tag 推算，適合 build.gradle 用 `git describe` 算 versionCode 的專案）
+$ANDROID_VERSION_SOURCE = "gradle"
+
+# git_tag 模式必填：目前的 versionName（例如 "2.9.0"），用來組出下一個 tag
+$ANDROID_VERSION_NAME = nil
+
+# Optional: git_tag 模式用來尋找/建立 tag 的前綴，預設 "distribute/v"
+# tag 格式為 "#{$ANDROID_GIT_TAG_PREFIX}#{$ANDROID_VERSION_NAME}/#{versionCode}"
+$ANDROID_GIT_TAG_PREFIX = "distribute/v"
+
+# Optional: build AAB 用的 gradle task 名稱，預設 "bundleRelease"
+# 有 flavor 的專案可指定例如 "bundleProdRelease"
+$ANDROID_BUNDLE_TASK = nil
+
 
 # ============================================
 # Helper Functions
@@ -182,6 +197,39 @@ def increment_android_version_code!(gradle_path)
   new_version_code = get_android_version_code(gradle_path) + 1
   updated = content.sub(/versionCode(\s*=?\s*)\d+/, "versionCode\\1#{new_version_code}")
   File.write(gradle_path, updated)
+  new_version_code
+end
+
+# 是否為 git_tag 版號來源模式
+def android_git_tag_version_source?
+  ($ANDROID_VERSION_SOURCE || "gradle").to_s == "git_tag"
+end
+
+# 從符合 $ANDROID_GIT_TAG_PREFIX 的 git tag 中取得目前最大的 versionCode（找不到則回傳 0）
+def latest_android_git_tag_version_code
+  prefix = $ANDROID_GIT_TAG_PREFIX || "distribute/v"
+  tags = sh("git tag --list '#{prefix}*'").split("\n").map(&:strip).reject(&:empty?)
+  return 0 if tags.empty?
+  tags.map { |t| t.split("/").last.to_i }.max
+end
+
+# 取得目前的 versionCode（依 $ANDROID_VERSION_SOURCE 決定從 gradle 檔案讀取或從 git tag 推算）
+def current_android_version_code(gradle_path)
+  if android_git_tag_version_source?
+    latest_android_git_tag_version_code
+  else
+    get_android_version_code(gradle_path)
+  end
+end
+
+# git_tag 模式：建立下一個 distribute tag（不修改 build.gradle），回傳新的 versionCode
+def bump_android_git_tag_version!
+  UI.user_error!("❌ git_tag 模式請設定 $ANDROID_VERSION_NAME") if $ANDROID_VERSION_NAME.to_s.empty?
+  prefix = $ANDROID_GIT_TAG_PREFIX || "distribute/v"
+  new_version_code = latest_android_git_tag_version_code + 1
+  tag = "#{prefix}#{$ANDROID_VERSION_NAME}/#{new_version_code}"
+  add_git_tag(tag: tag)
+  UI.success("✓ 已創建 tag: #{tag}")
   new_version_code
 end
 
@@ -410,24 +458,33 @@ platform :android do
     UI.user_error!("❌ 請設定 $ANDROID_PACKAGE_NAME") if $ANDROID_PACKAGE_NAME.to_s.empty?
     UI.user_error!("❌ 請設定 $ANDROID_JSON_KEY_FILE") if $ANDROID_JSON_KEY_FILE.to_s.empty?
 
-    gradle_path = android_gradle_path
-    UI.user_error!("❌ 找不到 #{gradle_path}") unless File.exist?(gradle_path)
+    git_tag_mode = android_git_tag_version_source?
+
+    gradle_path = nil
+    unless git_tag_mode
+      gradle_path = android_gradle_path
+      UI.user_error!("❌ 找不到 #{gradle_path}") unless File.exist?(gradle_path)
+    end
 
     # Version Bump
     if !options[:nobump]
-      version_code = increment_android_version_code!(gradle_path)
-      UI.success("✓ versionCode 已更新為 #{version_code}")
+      if git_tag_mode
+        bump_android_git_tag_version!
+      else
+        version_code = increment_android_version_code!(gradle_path)
+        UI.success("✓ versionCode 已更新為 #{version_code}")
 
-      git_commit(
-        path: [gradle_path],
-        message: "Version Bump: versionCode #{version_code}"
-      )
+        git_commit(
+          path: [gradle_path],
+          message: "Version Bump: versionCode #{version_code}"
+        )
 
-      version_name = get_android_version_name(gradle_path)
-      tag = "distribute/#{$tagPrefix}android-v#{version_name}/#{version_code}"
+        version_name = get_android_version_name(gradle_path)
+        tag = "distribute/#{$tagPrefix}android-v#{version_name}/#{version_code}"
 
-      add_git_tag(tag: tag)
-      UI.success("✓ 已創建 tag: #{tag}")
+        add_git_tag(tag: tag)
+        UI.success("✓ 已創建 tag: #{tag}")
+      end
     end
 
     # 生成 changelog
@@ -436,7 +493,8 @@ platform :android do
     # Build
     if !options[:nobuild]
       UI.message("🔨 開始構建 AAB...")
-      sh("cd .. && ./gradlew --no-daemon :#{$ANDROID_GRADLE_MODULE}:bundleRelease")
+      bundle_task = $ANDROID_BUNDLE_TASK || "bundleRelease"
+      sh("cd .. && ./gradlew --no-daemon :#{$ANDROID_GRADLE_MODULE}:#{bundle_task}")
       UI.success("✓ AAB 構建完成")
     end
 
@@ -465,7 +523,7 @@ platform :android do
       }
 
       if options[:changelog]
-        version_code = get_android_version_code(gradle_path)
+        version_code = current_android_version_code(gradle_path)
         changelog_metadata_dir = build_changelog_metadata_dir(version_code, changelog)
         upload_params[:metadata_path] = changelog_metadata_dir
       end

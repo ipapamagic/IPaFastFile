@@ -114,6 +114,23 @@
 
 
 # ============================================
+# 範例 3: versionCode 由 git tag 推算的專案
+# ============================================
+# 適合 build.gradle(.kts) 用 `git describe` 從最新的 distribute tag 推算 versionCode
+# 的專案（例如用 `distribute/v<versionName>/<versionCode>` 格式的 tag）。
+# 這種模式下 UploadGoogle 不會編輯 build.gradle，只會建立下一個 tag，
+# 讓 gradle build 時自己從最新 tag 讀到新的 versionCode。
+#
+# $ANDROID_PACKAGE_NAME = "com.example.myapp"
+# $ANDROID_JSON_KEY_FILE = "~/Documents/Google/MyApp/play-store-key.json"
+# $ANDROID_VERSION_SOURCE = "git_tag"
+# $ANDROID_VERSION_NAME = "2.9.0"                # 目前的 versionName，用來組出下一個 tag
+# $ANDROID_GIT_TAG_PREFIX = "distribute/v"        # 預設值，通常不用改
+# $ANDROID_BUNDLE_TASK = "bundleProdRelease"      # 有 flavor 時可指定，預設 "bundleRelease"
+# $ANDROID_AAB_PATH = "app/build/outputs/bundle/prodRelease/app-prod-release.aab"
+
+
+# ============================================
 # 如何取得 Google Play Service Account JSON Key
 # ============================================
 # 1. 登入 https://play.google.com/console
@@ -141,9 +158,14 @@
 #
 # 流程細節：
 # 1. nobuild:true 會自動一併設 nobump。
-# 2. 非 nobump 時：遞增 app/build.gradle 的 versionCode → git commit → 建立 tag
-#    distribute/#{$tagPrefix}android-v#{versionName}/#{versionCode}
-# 3. build 使用 `./gradlew --no-daemon :app:bundleRelease` 產生 AAB。
+# 2. 非 nobump 時，依 $ANDROID_VERSION_SOURCE 分兩種模式：
+#    - "gradle"（預設）：遞增 app/build.gradle 的 versionCode → git commit → 建立 tag
+#      distribute/#{$tagPrefix}android-v#{versionName}/#{versionCode}
+#    - "git_tag"：不編輯 build.gradle，直接建立下一個 tag
+#      #{$ANDROID_GIT_TAG_PREFIX}#{$ANDROID_VERSION_NAME}/#{versionCode}（versionCode 為目前最大值 +1）。
+#      build.gradle 需自行用 `git describe` 從最新 tag 推算 versionCode，
+#      這樣 build 時就會讀到剛建立的新 tag。
+# 3. build 使用 `./gradlew --no-daemon :#{$ANDROID_GRADLE_MODULE}:#{$ANDROID_BUNDLE_TASK || "bundleRelease"}` 產生 AAB。
 # 4. 上傳前用 jarsigner 驗證 AAB 簽名，未簽名或驗證失敗會直接中止。
 # 5. 上傳採用 fastlane upload_to_play_store（supply），預設 skip metadata/images/
 #    screenshots/changelogs；帶 changelog:true 時才會建立暫存的 metadata 目錄
