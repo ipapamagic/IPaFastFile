@@ -353,16 +353,20 @@ platform :ios do
       scheme_infos.each do |scheme, bundle_id|
         UI.message("正在構建: #{scheme}")
 
-        # 準備 export options（使用 Xcode 自動配置）
-        export_options = {
-          method: "app-store",
-          signingStyle: "automatic",
-          uploadSymbols: true
-        }
+        # 專案可提供完整的 export 設定（例如手動 signing）；未提供時維持原本自動簽名設定。
+        if defined?($TESTFLIGHT_EXPORT_OPTIONS)
+          export_options = $TESTFLIGHT_EXPORT_OPTIONS
+          export_xcargs = defined?($TESTFLIGHT_EXPORT_XCARGS) ? $TESTFLIGHT_EXPORT_XCARGS : nil
+        else
+          export_options = {
+            method: "app-store",
+            signingStyle: "automatic",
+            uploadSymbols: true
+          }
 
-        # 如果有團隊 ID，加入 export options（自動簽名需要）
-        if team_id
-          export_options[:teamID] = team_id
+          # 如果有團隊 ID，加入 export options（自動簽名需要）
+          export_options[:teamID] = team_id if team_id
+          export_xcargs = "-allowProvisioningUpdates"
         end
 
         # Build
@@ -371,7 +375,7 @@ platform :ios do
             scheme: scheme,
             output_name: "#{scheme}.ipa",
             export_options: export_options,
-            export_xcargs: "-allowProvisioningUpdates"
+            export_xcargs: export_xcargs
           )
         else
           build_app(
@@ -379,7 +383,7 @@ platform :ios do
             scheme: scheme,
             output_name: "#{scheme}.ipa",
             export_options: export_options,
-            export_xcargs: "-allowProvisioningUpdates"
+            export_xcargs: export_xcargs
           )
         end
 
